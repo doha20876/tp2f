@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard météo</title>
+  <style>
+    body { font-family: Arial; margin: 20px; }
+    .container { display: flex; gap: 20px; }
+    table { border-collapse: collapse; width: 300px; }
+    th, td { border: 1px solid #ccc; padding: 8px; }
+    .chart-box { width: 500px; height: 300px; margin-bottom: 20px; }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <div>
+    <table id="myTable">
+      <thead>
+        <tr>
+          <th>Mois</th>
+          <th>Max/Min</th>
+          <th>Pluie</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <p id="status">Connexion...</p>
+  </div>
+
+  <div>
+    <div class="chart-box">
+      <canvas id="chartTemp"></canvas>
+    </div>
+    <div class="chart-box">
+      <canvas id="chartPluie"></canvas>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+const ws = new WebSocket("ws://localhost:5002");
+
+const mois_tab = [];
+const max_tab = [];
+const min_tab = [];
+const pluie_tab = [];
+
+const chartTemp = new Chart(document.getElementById("chartTemp"), {
+  type: "line",
+  data: {
+    labels: mois_tab,
+    datasets: [
+      { label: "Max", data: max_tab, borderColor: "blue" },
+      { label: "Min", data: min_tab, borderColor: "red" }
+    ]
+  }
+});
+
+const chartPluie = new Chart(document.getElementById("chartPluie"), {
+  type: "bar",
+  data: {
+    labels: mois_tab,
+    datasets: [
+      { label: "Pluie", data: pluie_tab }
+    ]
+  }
+});
+
+const status = document.getElementById("status");
+
+ws.onopen = () => status.textContent = "WebSocket connecté";
+
+ws.onmessage = (event) => {
+  const tab = JSON.parse(event.data);
+
+  mois_tab.push(tab.mois);
+  max_tab.push(Number(tab.tmax));
+  min_tab.push(Number(tab.tmin));
+  pluie_tab.push(Number(tab.pluie));
+
+  const row = `
+    <tr>
+      <td>${tab.mois}</td>
+      <td>${tab.tmax}/${tab.tmin}</td>
+      <td>${tab.pluie}</td>
+    </tr>
+  `;
+
+  document.querySelector("#myTable tbody").insertAdjacentHTML("beforeend", row);
+
+  chartTemp.update();
+  chartPluie.update();
+};
+
+ws.onerror = () => status.textContent = "Erreur";
+
+ws.onclose = () => status.textContent = "Fermé";
+</script>
+
+</body>
+</html>
